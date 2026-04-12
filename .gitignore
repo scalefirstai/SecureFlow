@@ -1,8 +1,10 @@
 node_modules/
 dist/
-data/*.db
+data/
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
 **/reports/*.html
 **/reports/*.pdf
 .env
 *.log
-package-lock.json

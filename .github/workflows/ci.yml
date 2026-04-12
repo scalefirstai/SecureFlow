@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -24,10 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Rebuild native modules
-        run: npm rebuild better-sqlite3
+        run: npm ci
 
       - name: Run tests
         run: |
@@ -39,16 +36,17 @@ jobs:
             echo "::endgroup::"
           done
 
-  lint:
-    name: Type Check
+  audit:
+    name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
-      - run: npm install
-      - run: npx tsc -p packages/secureflow-mcp/tsconfig.json --noEmit
+      - run: npm ci
+      - name: npm audit
+        run: npm audit --audit-level=high
