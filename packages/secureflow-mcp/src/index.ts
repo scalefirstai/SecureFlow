@@ -15,6 +15,7 @@ import { verifyFix } from './tools/verify-fix.js';
 import { snapshotState } from './tools/snapshot-state.js';
 import { generateReport } from './tools/generate-report.js';
 import { checkGate } from './tools/check-gate.js';
+import { generateDashboard } from './tools/generate-dashboard.js';
 
 const DB_PATH = process.env.SECUREFLOW_DB || './data/secureflow.db';
 const db = initDatabase(DB_PATH);
@@ -144,6 +145,17 @@ server.tool('check_gate', 'Evaluate merge readiness against security policy', {
   mrId: z.string().optional().describe('Merge request ID'),
 }, async (args) => {
   const result = doCheckGate(args);
+  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+});
+
+// --- Dashboard ---
+const doDashboard = generateDashboard(db);
+
+server.tool('generate_dashboard', 'Generate a live HTML dashboard with current vulnerability state, top findings, and SLA violations', {
+  projectKey: z.string().optional().describe('Project to generate dashboard for (omit for all projects)'),
+  outputPath: z.string().optional().describe('Output file path'),
+}, async (args) => {
+  const result = doDashboard(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
