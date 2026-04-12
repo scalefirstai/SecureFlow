@@ -9,16 +9,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
-    "drizzle-orm": "^0.45.2",
-    "nodemailer": "8.0.5",
+    "better-sqlite3": "^11.10.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "@types/better-sqlite3": "^7.6.0"
   },
   "license": "Apache-2.0",
   "repository": {
