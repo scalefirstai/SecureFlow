@@ -21,21 +21,21 @@ DAST + SAST + SCA + Java SAST in one unified MCP server
 
 ## Overview
 
-SecureFlow MCP brings enterprise-grade security scanning directly into **Windsurf Cascade**, **Claude Code**, and any MCP-compatible IDE. It replaces StackHawk's proprietary scan-fix-verify loop with a fully open-source, fully local alternative built on industry-standard tools.
+SecureFlow MCP brings enterprise-grade security scanning directly into **Windsurf Cascade**, **Claude Code**, and any MCP-compatible IDE. Fully open-source, fully local, built on industry-standard tools.
 
-### SecureFlow vs StackHawk
+### Key Capabilities
 
-| | StackHawk | SecureFlow MCP |
-|:---|:---|:---|
-| **Scan types** | DAST only | DAST + SAST + SCA + Java SAST |
-| **Scanner engine** | Proprietary (ZAP-based) | OWASP ZAP (direct API) |
-| **Data residency** | StackHawk cloud | Fully local (SQLite) |
-| **Cost** | $5+/user/month | Free (Apache 2.0) |
-| **Fix-verify loop** | Manual (copy-paste) | Automated (`suggest_fix` + `verify_fix`) |
-| **Weekly governance** | Dashboard only | HTML/PDF report + email/Slack |
-| **Dependency analysis** | Not included | SBOM registry + fleet exposure |
-| **Merge gate** | CI/CD plugin | `check_gate` tool + GitLab CI |
-| **Exploitability** | Not included | EPSS + CISA KEV enrichment |
+| Capability | Details |
+|:---|:---|
+| **Scan types** | DAST + SAST + SCA + Java SAST |
+| **Scanner engines** | OWASP ZAP, SonarQube, Trivy, SpotBugs/FindSecBugs |
+| **Data residency** | Fully local (SQLite) &mdash; no data leaves your network |
+| **Cost** | Free (Apache 2.0) |
+| **Fix-verify loop** | Automated (`suggest_fix` + `verify_fix` in seconds) |
+| **Weekly governance** | HTML/PDF report + email/Slack distribution |
+| **Dependency analysis** | SBOM registry + fleet-wide CVE exposure queries |
+| **Merge gate** | `check_gate` tool + GitLab CI integration |
+| **Exploitability context** | EPSS + CISA KEV enrichment on every CVE |
 
 ---
 

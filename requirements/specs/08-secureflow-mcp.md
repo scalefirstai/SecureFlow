@@ -1,7 +1,7 @@
 # MCP 8: SecureFlow MCP (secureflow-mcp) - Unified Server v2.0
 
 ## Purpose
-Single unified MCP server consolidating all 7 prior MCPs (SonarQube, VulnTrend, GateKeeper, Dep Provenance, SecurityOrchestrator, SBOM Registry, ReportGen) with added DAST via OWASP ZAP, fix-verify remediation loop, and fully open-source scanner stack. Replaces StackHawk.
+Single unified MCP server consolidating all 7 prior MCPs (SonarQube, VulnTrend, GateKeeper, Dep Provenance, SecurityOrchestrator, SBOM Registry, ReportGen) with added DAST via OWASP ZAP, fix-verify remediation loop, and fully open-source scanner stack.
 
 ## Technology Stack
 - Language: TypeScript (Node.js 20+, ESM)
