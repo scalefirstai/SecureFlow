@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import { initDatabase } from './db/connection.js';
 import { initAdapters } from './adapters/index.js';
 import { scanApplication } from './tools/scan-application.js';
@@ -28,31 +29,39 @@ const doScanDeps = scanDependencies(db, adapters);
 const doScanAll = scanAll(db, adapters);
 
 server.tool('scan_application', 'Run DAST scan via OWASP ZAP against a running application', {
-  targetUrl: { type: 'string' }, scanType: { type: 'string' }, openApiSpec: { type: 'string' },
+  targetUrl: z.string().url().describe('Target URL to scan'),
+  scanType: z.enum(['quick', 'full', 'api-only']).default('full').describe('Scan type'),
+  openApiSpec: z.string().optional().describe('OpenAPI spec URL or file path'),
 }, async (args) => {
-  const result = await doScanApp(args as any);
+  const result = await doScanApp(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('scan_code', 'Trigger SonarQube SAST analysis on a project', {
-  projectKey: { type: 'string' }, branch: { type: 'string' },
+  projectKey: z.string().min(1).describe('SonarQube project key'),
+  branch: z.string().optional().describe('Git branch to analyze'),
 }, async (args) => {
-  const result = await doScanCode(args as any);
+  const result = await doScanCode(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('scan_dependencies', 'Run Trivy SCA + SpotBugs against project or container image', {
-  projectPath: { type: 'string' }, containerImage: { type: 'string' }, projectKey: { type: 'string' },
+  projectPath: z.string().optional().describe('Filesystem path to project'),
+  containerImage: z.string().optional().describe('Container image to scan'),
+  projectKey: z.string().min(1).describe('Project identifier'),
 }, async (args) => {
-  const result = await doScanDeps(args as any);
+  const result = await doScanDeps(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('scan_all', 'Orchestrate all scanners in parallel and return unified results', {
-  targetUrl: { type: 'string' }, projectKey: { type: 'string' }, branch: { type: 'string' },
-  containerImage: { type: 'string' }, openApiSpec: { type: 'string' },
+  targetUrl: z.string().url().describe('Target URL for DAST scan'),
+  projectKey: z.string().min(1).describe('Project identifier'),
+  branch: z.string().optional().describe('Git branch'),
+  containerImage: z.string().optional().describe('Container image for SCA'),
+  openApiSpec: z.string().optional().describe('OpenAPI spec for ZAP'),
 }, async (args) => {
-  const result = await doScanAll(args as any);
+  const result = await doScanAll(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
@@ -62,23 +71,29 @@ const doGetExploit = getExploitabilityTool(db);
 const doCompareScans = compareScans(db);
 
 server.tool('get_findings', 'Query unified findings with filtering and exploitability enrichment', {
-  assessmentId: { type: 'string' }, severity: { type: 'array', items: { type: 'string' } },
-  scanner: { type: 'string' }, cwe: { type: 'string' }, exploitable: { type: 'boolean' },
-  component: { type: 'string' }, limit: { type: 'number' },
+  assessmentId: z.string().optional().describe('Filter by assessment ID'),
+  severity: z.array(z.string()).optional().describe('Filter by severity levels'),
+  scanner: z.string().optional().describe('Filter by scanner name'),
+  cwe: z.string().optional().describe('Filter by CWE ID'),
+  exploitable: z.boolean().optional().describe('Only exploitable findings'),
+  component: z.string().optional().describe('Filter by component path'),
+  limit: z.number().int().positive().default(50).describe('Max results'),
 }, async (args) => {
   const result = doGetFindings(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('get_exploitability', 'Enrich a CVE with EPSS score, CISA KEV status, and exploit maturity', {
-  cveId: { type: 'string' },
+  cveId: z.string().min(1).describe('CVE identifier (e.g., CVE-2024-38816)'),
 }, async (args) => {
   const result = await doGetExploit(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('compare_scans', 'Delta between two scan runs: new, resolved, regressed findings', {
-  scanId1: { type: 'string' }, scanId2: { type: 'string' }, projectKey: { type: 'string' },
+  scanId1: z.string().min(1).describe('First scan/assessment ID'),
+  scanId2: z.string().min(1).describe('Second scan/assessment ID'),
+  projectKey: z.string().optional().describe('Filter by project'),
 }, async (args) => {
   const result = doCompareScans(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
@@ -89,14 +104,14 @@ const doSuggestFix = suggestFix(db);
 const doVerifyFix = verifyFix(db, adapters);
 
 server.tool('suggest_fix', 'Generate remediation guidance for a specific finding', {
-  findingId: { type: 'string' },
+  findingId: z.string().min(1).describe('Finding ID to get fix guidance for'),
 }, async (args) => {
   const result = doSuggestFix(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('verify_fix', 'Re-scan to verify a finding has been remediated', {
-  findingId: { type: 'string' },
+  findingId: z.string().min(1).describe('Finding ID to re-test'),
 }, async (args) => {
   const result = await doVerifyFix(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
@@ -108,22 +123,25 @@ const doReport = generateReport(db);
 const doCheckGate = checkGate(db);
 
 server.tool('snapshot_state', 'Persist current findings state for weekly trend tracking', {
-  source: { type: 'string' }, projects: { type: 'array', items: { type: 'string' } },
+  source: z.enum(['all', 'sonarqube', 'zap', 'trivy']).default('all').describe('Scanner source filter'),
+  projects: z.array(z.string()).optional().describe('Project keys to snapshot'),
 }, async (args) => {
   const result = doSnapshot(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('generate_report', 'Produce weekly HTML/PDF governance report', {
-  weekOf: { type: 'string' }, format: { type: 'string' },
-  distribute: { type: 'object' },
+  weekOf: z.string().optional().describe('ISO week (e.g., 2026-W15)'),
+  format: z.enum(['html', 'pdf', 'both']).default('html').describe('Output format'),
 }, async (args) => {
   const result = await doReport(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
 
 server.tool('check_gate', 'Evaluate merge readiness against security policy', {
-  projectKey: { type: 'string' }, branch: { type: 'string' }, mrId: { type: 'string' },
+  projectKey: z.string().min(1).describe('Project to evaluate'),
+  branch: z.string().min(1).describe('Branch being merged'),
+  mrId: z.string().optional().describe('Merge request ID'),
 }, async (args) => {
   const result = doCheckGate(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
