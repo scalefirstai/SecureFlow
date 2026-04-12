@@ -1,0 +1,30 @@
+volumes:
+  trivy-cache:
+    name: secureflow-trivy-cache
+
+services:
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    command: >
+      zap.sh -daemon -host 0.0.0.0 -port 8090
+      -config api.key=${ZAP_API_KEY:-secureflow}
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
+    ports:
+      - '8090:8090'
+    volumes:
+      - ./zap-scan-policy.xml:/zap/policies/spring-boot.policy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/JSON/core/view/version/?apikey=${ZAP_API_KEY:-secureflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Pre-seed Trivy vulnerability DB so first scan is fast
+  trivy-db-seed:
+    image: aquasec/trivy:latest
+    command: image --download-db-only
+    volumes:
+      - trivy-cache:/root/.cache/
+    profiles:
+      - setup

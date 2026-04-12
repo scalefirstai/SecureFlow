@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <policy>spring-boot</policy>
+  <!-- High priority: OWASP Top 10 for Java Spring Boot -->
+  <scanner>
+    <id>40018</id><name>SQL Injection</name><strength>HIGH</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>90035</id><name>Server-Side Template Injection</name><strength>HIGH</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>90019</id><name>Remote Code Execution</name><strength>HIGH</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>6</id><name>Path Traversal</name><strength>HIGH</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>40014</id><name>CSRF</name><strength>HIGH</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <!-- Medium priority -->
+  <scanner>
+    <id>40012</id><name>XSS Reflected</name><strength>MEDIUM</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>10028</id><name>Open Redirect</name><strength>MEDIUM</strength><threshold>MEDIUM</threshold>
+  </scanner>
+  <scanner>
+    <id>20014</id><name>HTTP Parameter Pollution</name><strength>MEDIUM</strength><threshold>LOW</threshold>
+  </scanner>
+</configuration>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/*.db
+**/reports/*.html
+**/reports/*.pdf
+.env
+*.log
+package-lock.json
