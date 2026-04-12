@@ -23,5 +23,11 @@
     "tsx": "^4.0.0",
     "typescript": "^5.5.0",
     "vitest": "^4.1.4"
-  }
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scalefirstai/SecureFlow.git"
+  },
+  "author": "ScaleFirst (https://scalefirst.org)"
 }
