@@ -16,6 +16,9 @@ import { snapshotState } from './tools/snapshot-state.js';
 import { generateReport } from './tools/generate-report.js';
 import { checkGate } from './tools/check-gate.js';
 import { generateDashboard } from './tools/generate-dashboard.js';
+import { checkPackage } from './tools/check-package.js';
+import { requestPackage } from './tools/request-package.js';
+import { approvePackage, listApprovedPackages } from './tools/approve-package.js';
 
 const DB_PATH = process.env.SECUREFLOW_DB || './data/secureflow.db';
 const db = initDatabase(DB_PATH);
@@ -147,6 +150,74 @@ server.tool('check_gate', 'Evaluate merge readiness against security policy', {
   const result = doCheckGate(args);
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 });
+
+// --- Package Whitelist (AI Agent Enforcement) ---
+const doCheckPackage = checkPackage(db);
+const doRequestPackage = requestPackage(db);
+const doApprovePackage = approvePackage(db);
+const doListApproved = listApprovedPackages(db);
+
+server.tool(
+  'check_package',
+  'REQUIRED: AI agents MUST call this before suggesting any package/dependency. Returns APPROVED, NEEDS_REVIEW, PENDING, or BLOCKED. Never add a package to code without calling this first.',
+  {
+    ecosystem: z.enum(['npm', 'maven', 'pypi', 'nuget', 'rubygems', 'cargo', 'go']).describe('Package ecosystem'),
+    name: z.string().min(1).describe('Package name (Maven: groupId:artifactId)'),
+    version: z.string().optional().describe('Specific version requested'),
+  },
+  async (args) => {
+    const result = await doCheckPackage(args);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+);
+
+server.tool(
+  'request_package',
+  'Submit a package for security team review. Call this when check_package returns NEEDS_REVIEW. Do NOT add the package to code until approved.',
+  {
+    ecosystem: z.enum(['npm', 'maven', 'pypi', 'nuget', 'rubygems', 'cargo', 'go']),
+    name: z.string().min(1),
+    version: z.string().min(1),
+    justification: z.string().min(20).describe('Why this package is needed (min 20 chars)'),
+    requestedBy: z.string().min(1).describe('Developer email/name'),
+  },
+  async (args) => {
+    const result = doRequestPackage(args);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+);
+
+server.tool(
+  'approve_package',
+  'Security team: approve or block a package in the catalog. Only security team members should use this.',
+  {
+    ecosystem: z.enum(['npm', 'maven', 'pypi', 'nuget', 'rubygems', 'cargo', 'go']),
+    name: z.string().min(1),
+    version: z.string().min(1),
+    approvedBy: z.string().min(1),
+    maxVersion: z.string().optional(),
+    notes: z.string().optional(),
+    action: z.enum(['approve', 'block']).default('approve'),
+    blockReason: z.string().optional(),
+  },
+  async (args) => {
+    const result = doApprovePackage(args);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+);
+
+server.tool(
+  'list_approved_packages',
+  'Browse the approved package catalog. AI agents can use this to find pre-approved alternatives.',
+  {
+    ecosystem: z.enum(['npm', 'maven', 'pypi', 'nuget', 'rubygems', 'cargo', 'go']).optional(),
+    status: z.enum(['APPROVED', 'UNDER_REVIEW', 'BLOCKED']).optional(),
+  },
+  async (args) => {
+    const result = doListApproved(args);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+);
 
 // --- Dashboard ---
 const doDashboard = generateDashboard(db);
