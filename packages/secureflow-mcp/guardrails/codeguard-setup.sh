@@ -15,7 +15,7 @@
 set -euo pipefail
 
 TARGET="${1:-}"
-TAG="${2:-v1.3.0}"
+TAG="${2:-v1.3.1}"
 
 if [ -z "$TARGET" ]; then
   echo "usage: $0 <target-project-dir> [codeguard-tag]" >&2
@@ -48,8 +48,12 @@ cd "$WORKDIR/project-codeguard"
 echo "[codeguard] installing python deps via uv"
 uv sync
 
-echo "[codeguard] generating Windsurf-format rules (core + owasp)"
-uv run python src/convert_to_ide_formats.py --source core owasp
+echo "[codeguard] generating Windsurf-format rules (core)"
+# NOTE: --source core owasp currently fails upstream due to a duplicate
+# filename (codeguard-0-safe-c-functions.md appears in both bundles).
+# Track https://github.com/cosai-oasis/project-codeguard — re-enable
+# owasp once that is resolved.
+uv run python src/convert_to_ide_formats.py --source core
 
 if [ ! -d "dist/.windsurf" ]; then
   echo "error: dist/.windsurf not generated; check codeguard output" >&2

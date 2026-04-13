@@ -181,7 +181,7 @@ Run the installer against your target project (not SecureFlow itself):
 # From the SecureFlow checkout
 ./packages/secureflow-mcp/guardrails/codeguard-setup.sh \
   /path/to/your/spring-boot-service \
-  v1.3.0
+  v1.3.1
 ```
 
 This creates two files in your target project:

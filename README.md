@@ -168,7 +168,7 @@ Run the installer against each project where you want the guardrails active:
 ```bash
 ~/tools/secureflow/packages/secureflow-mcp/guardrails/codeguard-setup.sh \
   /path/to/your/spring-boot-service \
-  v1.3.0
+  v1.3.1
 ```
 
 The installer creates:
