@@ -28,13 +28,8 @@ jobs:
 
       - name: Run tests
         run: |
-          for pkg in sonarqube-mcp vulntrend-mcp gatekeeper-mcp dep-provenance-mcp security-orchestrator-mcp sbom-registry-mcp reportgen-mcp secureflow-mcp; do
-            echo "::group::Testing $pkg"
-            cd "packages/$pkg"
-            npx vitest run
-            cd ../..
-            echo "::endgroup::"
-          done
+          cd packages/secureflow-mcp
+          npx vitest run
 
   audit:
     name: Security Audit

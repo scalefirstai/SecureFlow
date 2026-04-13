@@ -167,18 +167,11 @@ npm run test --workspaces
 cd packages/secureflow-mcp && npx vitest run
 ```
 
-| Package | Status | Tools | Tests |
-|:--------|:------:|------:|------:|
-| **secureflow-mcp** (unified v2.1) | :star: **Primary** | 17 | 22 |
-| sonarqube-mcp | :warning: legacy v1.0 | 5 | 12 |
-| vulntrend-mcp | :warning: legacy v1.0 | 6 | 14 |
-| gatekeeper-mcp | :warning: legacy v1.0 | 7 | 16 |
-| dep-provenance-mcp | :warning: legacy v1.0 | 7 | 11 |
-| security-orchestrator-mcp | :warning: legacy v1.0 | 5 | 10 |
-| sbom-registry-mcp | :warning: legacy v1.0 | 6 | 9 |
-| reportgen-mcp | :warning: legacy v1.0 | 5 | 10 |
+| Package | Tools | Tests |
+|:--------|------:|------:|
+| **secureflow-mcp** (unified v2.1) | 17 | 22 |
 
-> **Only `secureflow-mcp` is active.** The 7 standalone packages marked "legacy v1.0" were consolidated into `secureflow-mcp` as internal modules/adapters per spec v2.0 §1.2. They still build and their tests still pass, but **do not register them individually with your IDE** &mdash; that would consume Windsurf's 100-tool budget and duplicate functionality. Only point your MCP client at `packages/secureflow-mcp/dist/index.js`.
+> The 7 standalone v1.0 MCPs (sonarqube, vulntrend, gatekeeper, dep-provenance, security-orchestrator, sbom-registry, reportgen) were consolidated into `secureflow-mcp` as internal modules/adapters per spec v2.0 §1.2 and **removed from the repo in v2.1** to reduce surface area. Their functionality lives on inside `secureflow-mcp`; point your MCP client at `packages/secureflow-mcp/dist/index.js`.
 
 ---
 
@@ -199,8 +192,7 @@ SecureFlow/
 │   │   ├── guardrails/          # CodeGuard installer + .windsurfrules
 │   │   ├── enforcement/         # pre-commit hook + AGENT_RULES.md
 │   │   └── tests/               # 22 unit tests
-│   ├── shared/                  # Common types, schemas, errors
-│   └── [7 legacy v1.0 MCPs]     # Superseded — do not register separately
+│   └── shared/                  # Common types, schemas, errors
 ├── requirements/                # Specs + test case matrices
 ├── CONTRIBUTING.md
 ├── SECURITY.md
