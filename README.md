@@ -39,30 +39,266 @@ SecureFlow MCP brings enterprise-grade security scanning directly into **Windsur
 
 ---
 
-## Quick Start
+## Setup
+
+End-to-end install, from cloning the repo to the first scan. Works on macOS and Linux. For the abbreviated version, see [GETTING_STARTED.md](packages/secureflow-mcp/docs/GETTING_STARTED.md).
+
+### Prerequisites
+
+| Tool | Version | Required for | How to install |
+|------|---------|--------------|----------------|
+| Node.js | 20+ | SecureFlow MCP server | [nodejs.org](https://nodejs.org) or `brew install node` |
+| Docker | 24+ | OWASP ZAP + Trivy | [docker.com](https://www.docker.com/products/docker-desktop) |
+| git | 2.x | Cloning repos | Preinstalled on macOS, `apt install git` on Linux |
+| `uv` | 0.4+ | CodeGuard installer (Step 6) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| SonarQube | 9.9 LTS or 10.x | SAST scans (optional) | Use your org's existing instance |
+| Maven | 3.8+ | SpotBugs / SBOM (optional) | `brew install maven` |
+
+### Step 1 — Clone and build SecureFlow
 
 ```bash
-# Clone and install
-git clone https://github.com/scalefirstai/SecureFlow.git
-cd SecureFlow && npm install
-
-# Start OWASP ZAP (Docker)
-cd packages/secureflow-mcp/docker
-export ZAP_API_KEY=my-secret-key
-docker-compose up -d zap
-
-# Build TypeScript
-cd ../../..
+# Pick a permanent home; MCP clients will point at this path.
+git clone https://github.com/scalefirstai/SecureFlow.git ~/tools/secureflow
+cd ~/tools/secureflow
+npm install
 npx tsc -p packages/secureflow-mcp/tsconfig.json
+```
+
+Output: `packages/secureflow-mcp/dist/index.js` is the MCP server entrypoint.
+
+Create the SQLite data dir and export the path so every component (MCP server, pre-commit hooks, CLI) uses the same DB:
+
+```bash
+mkdir -p ~/.secureflow
+echo 'export SECUREFLOW_DB=$HOME/.secureflow/secureflow.db' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Step 2 — Start OWASP ZAP (DAST)
+
+Skip this step if you only want SAST/SCA + the package whitelist.
+
+```bash
+cd ~/tools/secureflow/packages/secureflow-mcp/docker
+export ZAP_API_KEY=$(openssl rand -hex 16)
+echo "export ZAP_API_KEY=$ZAP_API_KEY" >> ~/.zshrc
+docker compose up -d zap
+
+# Verify
+curl "http://localhost:8090/JSON/core/view/version/?apikey=$ZAP_API_KEY"
+# Expected: {"version":"2.15.0"}
+```
+
+Pre-seed the Trivy CVE database (one-time, ~500 MB):
+
+```bash
+docker compose --profile setup run trivy-db-seed
+```
+
+### Step 3 — Configure environment
+
+Create `~/tools/secureflow/.env`:
+
+```bash
+cat > ~/tools/secureflow/.env <<'EOF'
+# Scanners
+ZAP_API_URL=http://localhost:8090
+ZAP_API_KEY=REPLACE_WITH_STEP_2_VALUE
+SONAR_HOST_URL=https://sonar.yourcompany.com
+SONAR_TOKEN=squ_your_token_here
+TRIVY_MODE=docker
+
+# Storage
+SECUREFLOW_DB=/Users/YOU/.secureflow/secureflow.db
+REPORT_OUTPUT_DIR=/Users/YOU/tools/secureflow/reports
+
+# SLA thresholds (days)
+SLA_CRITICAL_DAYS=7
+SLA_HIGH_DAYS=30
+SLA_MEDIUM_DAYS=90
+
+# Weekly snapshot (Mon 06:00)
+SNAPSHOT_CRON=0 6 * * 1
+
+# Optional report distribution
+# SMTP_HOST=smtp.yourcompany.com
+# SMTP_USER=...
+# SMTP_PASS=...
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+# DEFAULT_RECIPIENTS=security@yourcompany.com
+EOF
+```
+
+### Step 4 — Register SecureFlow with your AI IDE
+
+**Claude Code** — add to `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "secureflow": {
+      "command": "node",
+      "args": ["/Users/YOU/tools/secureflow/packages/secureflow-mcp/dist/index.js"],
+      "env": {
+        "SECUREFLOW_DB": "/Users/YOU/.secureflow/secureflow.db",
+        "ZAP_API_URL": "http://localhost:8090",
+        "ZAP_API_KEY": "<same value as Step 2>",
+        "SONAR_HOST_URL": "https://sonar.yourcompany.com",
+        "SONAR_TOKEN": "<your token>",
+        "TRIVY_MODE": "docker",
+        "REPORT_OUTPUT_DIR": "/Users/YOU/tools/secureflow/reports"
+      }
+    }
+  }
+}
+```
+
+**Windsurf** — same structure, at `~/.codeium/windsurf/mcp_config.json`.
+
+**Cursor** — same structure, under *Settings → MCP*.
+
+Restart the IDE. You should now see `scan_application`, `check_package`, `check_gate`, and the 14 other SecureFlow tools available.
+
+### Step 5 — Install CodeGuard + agent rules into your target project
+
+SecureFlow uses **[Project CodeGuard (CoSAI/OASIS)](https://github.com/cosai-oasis/project-codeguard)** as the Layer 1 baseline security ruleset for AI coding agents. SecureFlow's `.windsurfrules` extension layers MCP-enforced dependency guardrails on top.
+
+Run the installer against each project where you want the guardrails active:
+
+```bash
+~/tools/secureflow/packages/secureflow-mcp/guardrails/codeguard-setup.sh \
+  /path/to/your/spring-boot-service \
+  v1.3.0
+```
+
+The installer creates:
+
+```
+your-service/
+  .windsurf/rules/    # CodeGuard baseline (upstream — don't edit)
+  .windsurfrules      # SecureFlow MCP extension (commit as-is)
+```
+
+Commit both so every developer and AI agent picks them up:
+
+```bash
+cd /path/to/your/spring-boot-service
+git add .windsurf .windsurfrules
+git commit -m "chore: add CodeGuard + SecureFlow agent rules"
+```
+
+For **Claude Code**, also reference the rules from your project's `CLAUDE.md`:
+
+```markdown
+## Security rules
+See `.windsurf/rules/` (CodeGuard baseline) and `.windsurfrules`
+(SecureFlow MCP extension). Always call `check_package` before
+adding any dependency.
+```
+
+Refresh CodeGuard quarterly by re-running the installer with a newer tag. Your `.windsurfrules` extension is not overwritten.
+
+### Step 6 — Seed the package whitelist catalog
+
+The `check_package` catalog is empty on first use, so every dependency returns `NEEDS_REVIEW` until you seed it. Two options:
+
+**From your IDE (recommended):**
+
+```
+> Approve npm package "express" version "4.19.2",
+  approvedBy "security@acme.com",
+  notes "Standard web framework, already in use"
+```
+
+The agent calls `approve_package`, which writes to `package_catalog`.
+
+**Bulk SQL import** — faster for an existing `package.json`:
+
+```bash
+sqlite3 "$SECUREFLOW_DB" <<'SQL'
+INSERT INTO package_catalog (id, ecosystem, name, version, status, approved_by, approved_at) VALUES
+  (lower(hex(randomblob(16))), 'npm', 'express', '4.19.2', 'APPROVED', 'security@acme.com', datetime('now')),
+  (lower(hex(randomblob(16))), 'npm', 'zod',     '3.23.8', 'APPROVED', 'security@acme.com', datetime('now'));
+SQL
+```
+
+The `package_catalog` table is auto-created the first time any package tool runs.
+
+### Step 7 — Install the pre-commit hook (Layer 3 enforcement)
+
+Catches manual edits that bypass the agent layer.
+
+```bash
+cd /path/to/your/spring-boot-service
+cp ~/tools/secureflow/packages/secureflow-mcp/enforcement/pre-commit-check.sh \
+   .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+Or with Husky:
+
+```bash
+npx husky add .husky/pre-commit \
+  "bash ~/tools/secureflow/packages/secureflow-mcp/enforcement/pre-commit-check.sh"
+```
+
+The hook reads `$SECUREFLOW_DB` and blocks commits that add packages whose catalog status is `BLOCKED`, `UNDER_REVIEW`, or missing.
+
+### Step 8 — Run your first scan
+
+Start a target app:
+
+```bash
+cd /path/to/your/spring-boot-service
+mvn spring-boot:run
+# App on http://localhost:8080
 ```
 
 Then in your IDE:
 
 ```
-> Scan my API at http://localhost:8080 for vulnerabilities
+> Scan my API at http://localhost:8080 for vulnerabilities (quick mode)
+> Show me the critical findings
+> Fix the SQL injection finding and verify the fix
+> Generate the weekly security dashboard
 ```
 
-> **[Full Getting Started Guide &rarr;](packages/secureflow-mcp/docs/GETTING_STARTED.md)**
+Before merging:
+
+```
+> Run check_gate for project order-service, branch feature/new-api
+```
+
+---
+
+## Daily workflow
+
+| Who | Action | Tool |
+|---|---|---|
+| Developer asks agent for a new dep | Agent calls `check_package` first | `check_package` |
+| Agent gets `NEEDS_REVIEW` | Submits with justification, stops | `request_package` |
+| Security team reviews queue | Approves or blocks | `approve_package`, `list_approved_packages` |
+| Developer retries the commit | Pre-commit hook checks catalog | `enforcement/pre-commit-check.sh` |
+| After code changes | Re-run DAST scan | `scan_application` |
+| After a fix | Targeted re-scan to verify | `verify_fix` |
+| Before merge | Evaluate against policy | `check_gate` |
+| Weekly | Snapshot + dashboard | `snapshot_state`, `generate_dashboard` |
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `ZAP_UNAVAILABLE` | Docker not running, or `ZAP_API_KEY` mismatch between compose and MCP config. `docker compose logs zap` for details. |
+| `TRIVY_NOT_INSTALLED` | `export TRIVY_MODE=docker && docker pull aquasec/trivy:latest` |
+| `SONAR_UNAVAILABLE` | Check token and URL: `curl -u "$SONAR_TOKEN:" $SONAR_HOST_URL/api/system/status` |
+| `BUILD_REQUIRED` from SpotBugs | `mvn compile` the target project first |
+| `check_package` always returns `NEEDS_REVIEW` | Catalog is empty — seed it (Step 6) |
+| Pre-commit warns `SecureFlow DB not found` | Export `SECUREFLOW_DB` in your shell profile so git hooks see it |
+| Agent not calling `check_package` | Confirm `.windsurfrules` is at the project root and referenced from `CLAUDE.md` |
+| `codeguard-setup.sh` fails with "uv: command not found" | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Tests fail locally with "Could not locate the bindings file" | `npm rebuild better-sqlite3` (native module rebuild for your Node version) |
 
 ---
 
