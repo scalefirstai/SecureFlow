@@ -66,7 +66,7 @@ Then in your IDE:
 
 ---
 
-## 12 MCP Tools
+## 17 MCP Tools
 
 <table>
 <thead>
@@ -85,12 +85,20 @@ Then in your IDE:
 <tr><td rowspan="2"><b>Remediation</b></td>
     <td><code>suggest_fix</code></td><td>OWASP guidance + Spring Boot code patterns + ready-to-paste prompt</td></tr>
 <tr><td><code>verify_fix</code></td><td>Targeted re-scan to confirm fix (5&ndash;30 seconds)</td></tr>
-<tr><td rowspan="3"><b>Governance</b></td>
+<tr><td rowspan="4"><b>Governance</b></td>
     <td><code>snapshot_state</code></td><td>Weekly trend persistence with library hotspots</td></tr>
 <tr><td><code>generate_report</code></td><td>HTML/PDF report + email/Slack distribution</td></tr>
+<tr><td><code>generate_dashboard</code></td><td>Live dashboard snapshot with weekly delta and SLA aging</td></tr>
 <tr><td><code>check_gate</code></td><td>Merge policy enforcement with exemptions + SOX audit trail</td></tr>
+<tr><td rowspan="4"><b>Dependency<br/>guardrails<br/>(v2.1)</b></td>
+    <td><code>check_package</code></td><td><b>Required before adding any dep.</b> Returns APPROVED / NEEDS_REVIEW / PENDING / BLOCKED with CVE context</td></tr>
+<tr><td><code>request_package</code></td><td>Submit a package for security-team review with justification + audit trail</td></tr>
+<tr><td><code>approve_package</code></td><td>Security team: approve or block a package in the catalog</td></tr>
+<tr><td><code>list_approved_packages</code></td><td>Browse the approved catalog &mdash; agents use this to find pre-approved alternatives</td></tr>
 </tbody>
 </table>
+
+> **AI-agent dependency guardrails (new in v2.1).** The last four tools implement a 6-layer defense-in-depth framework for preventing AI coding agents from introducing vulnerable packages. Layer 1 is built on **[Project CodeGuard (CoSAI/OASIS)](https://github.com/cosai-oasis/project-codeguard)** &mdash; an industry-standard security ruleset backed by Google, Anthropic, Microsoft, NVIDIA, IBM, Meta. See **[guardrails/README.md](packages/secureflow-mcp/guardrails/README.md)** for installation and the full coverage matrix.
 
 ---
 
@@ -99,14 +107,14 @@ Then in your IDE:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    SecureFlow MCP Server                     │
-│                  12 tools  ·  stdio transport                │
-├──────────────┬─────────────┬─────────────┬─────────────────-┤
-│  Scan        │  Findings   │ Remediation │  Governance      │
-│  scan_app    │  get_*      │ suggest_fix │  snapshot_state  │
-│  scan_code   │  compare_*  │ verify_fix  │  generate_report │
-│  scan_deps   │             │             │  check_gate      │
-│  scan_all    │             │             │                  │
-└──────┬───────┴──────┬──────┴──────┬──────┴────────┬─────────┘
+│                  17 tools  ·  stdio transport                │
+├──────────┬──────────┬────────────┬────────────┬─────────────┤
+│  Scan    │ Findings │Remediation │ Governance │  Guardrails │
+│ scan_app │ get_*    │suggest_fix │ snapshot   │check_package│
+│ scan_code│ compare_*│verify_fix  │ gen_report │request_pkg  │
+│ scan_deps│          │            │ gen_dash   │approve_pkg  │
+│ scan_all │          │            │ check_gate │list_approved│
+└──────┬───┴─────┬────┴──────┬─────┴──────┬─────┴──────┬──────┘
        │              │             │               │
   ┌────▼────┐   ┌─────▼────┐  ┌────▼─────┐  ┌─────▼─────┐
   │Adapters │   │Enrichment│  │  Utils   │  │ SQLite DB │
@@ -159,17 +167,18 @@ npm run test --workspaces
 cd packages/secureflow-mcp && npx vitest run
 ```
 
-| Package | Tools | Tests | Status |
-|:--------|------:|------:|:------:|
-| secureflow-mcp (unified v2.0) | 12 | 22 | :white_check_mark: |
-| sonarqube-mcp | 5 | 12 | :white_check_mark: |
-| vulntrend-mcp | 6 | 14 | :white_check_mark: |
-| gatekeeper-mcp | 7 | 16 | :white_check_mark: |
-| dep-provenance-mcp | 7 | 11 | :white_check_mark: |
-| security-orchestrator-mcp | 5 | 10 | :white_check_mark: |
-| sbom-registry-mcp | 6 | 9 | :white_check_mark: |
-| reportgen-mcp | 5 | 10 | :white_check_mark: |
-| **Total** | **53** | **104** | :white_check_mark: |
+| Package | Status | Tools | Tests |
+|:--------|:------:|------:|------:|
+| **secureflow-mcp** (unified v2.1) | :star: **Primary** | 17 | 22 |
+| sonarqube-mcp | :warning: legacy v1.0 | 5 | 12 |
+| vulntrend-mcp | :warning: legacy v1.0 | 6 | 14 |
+| gatekeeper-mcp | :warning: legacy v1.0 | 7 | 16 |
+| dep-provenance-mcp | :warning: legacy v1.0 | 7 | 11 |
+| security-orchestrator-mcp | :warning: legacy v1.0 | 5 | 10 |
+| sbom-registry-mcp | :warning: legacy v1.0 | 6 | 9 |
+| reportgen-mcp | :warning: legacy v1.0 | 5 | 10 |
+
+> **Only `secureflow-mcp` is active.** The 7 standalone packages marked "legacy v1.0" were consolidated into `secureflow-mcp` as internal modules/adapters per spec v2.0 §1.2. They still build and their tests still pass, but **do not register them individually with your IDE** &mdash; that would consume Windsurf's 100-tool budget and duplicate functionality. Only point your MCP client at `packages/secureflow-mcp/dist/index.js`.
 
 ---
 
@@ -178,18 +187,20 @@ cd packages/secureflow-mcp && npx vitest run
 ```
 SecureFlow/
 ├── packages/
-│   ├── secureflow-mcp/          # Unified v2.0 server (primary)
+│   ├── secureflow-mcp/          # Unified v2.1 server (primary)
 │   │   ├── src/
-│   │   │   ├── tools/           # 12 MCP tool implementations
+│   │   │   ├── tools/           # 17 MCP tool implementations
 │   │   │   ├── adapters/        # 4 scanner adapters + interface
 │   │   │   ├── modules/         # enrichment (EPSS, KEV, OSV)
 │   │   │   ├── utils/           # dedup, normalize, risk-score
 │   │   │   └── db/              # SQLite schema (11 tables + FTS5)
 │   │   ├── docker/              # ZAP compose + scan policy
 │   │   ├── docs/                # Step-by-step guides
+│   │   ├── guardrails/          # CodeGuard installer + .windsurfrules
+│   │   ├── enforcement/         # pre-commit hook + AGENT_RULES.md
 │   │   └── tests/               # 22 unit tests
 │   ├── shared/                  # Common types, schemas, errors
-│   └── [7 standalone v1.0 MCPs] # Individual MCP servers
+│   └── [7 legacy v1.0 MCPs]     # Superseded — do not register separately
 ├── requirements/                # Specs + test case matrices
 ├── CONTRIBUTING.md
 ├── SECURITY.md
