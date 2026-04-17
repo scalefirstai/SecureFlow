@@ -177,12 +177,15 @@ SecureFlow uses **[Project CodeGuard (CoSAI/OASIS)](https://github.com/cosai-oas
 
 Run the installer against your target project (not SecureFlow itself):
 
+CodeGuard rules are **vendored** in this repo under `packages/secureflow-mcp/guardrails/codeguard-rules/` and pinned via `VERSION`. The installer needs no network, `git`, `python`, or `uv` at install time — it just copies the vendored snapshot.
+
 ```bash
 # From the SecureFlow checkout
 ./packages/secureflow-mcp/guardrails/codeguard-setup.sh \
-  /path/to/your/spring-boot-service \
-  v1.3.1
+  /path/to/your/spring-boot-service
 ```
+
+To refresh the vendored snapshot to a newer CodeGuard release, see `packages/secureflow-mcp/guardrails/codeguard-rules/README.md`.
 
 This creates two files in your target project:
 
@@ -312,5 +315,3 @@ Export `SECUREFLOW_DB` in your shell profile (`~/.zshrc` or `~/.bashrc`) so it's
 echo 'export SECUREFLOW_DB=$HOME/.secureflow/secureflow.db' >> ~/.zshrc
 ```
 
-### `codeguard-setup.sh` fails with "uv: command not found"
-Install `uv` first: `curl -LsSf https://astral.sh/uv/install.sh | sh`

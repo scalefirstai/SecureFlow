@@ -165,10 +165,11 @@ SecureFlow uses **[Project CodeGuard (CoSAI/OASIS)](https://github.com/cosai-oas
 
 Run the installer against each project where you want the guardrails active:
 
+CodeGuard rules are **vendored in this repo** under `packages/secureflow-mcp/guardrails/codeguard-rules/` (pinned via `VERSION`), so the installer needs no network, `git`, `python`, or `uv` at install time:
+
 ```bash
 ~/tools/secureflow/packages/secureflow-mcp/guardrails/codeguard-setup.sh \
-  /path/to/your/spring-boot-service \
-  v1.3.1
+  /path/to/your/spring-boot-service
 ```
 
 The installer creates:
@@ -297,7 +298,6 @@ Before merging:
 | `check_package` always returns `NEEDS_REVIEW` | Catalog is empty — seed it (Step 6) |
 | Pre-commit warns `SecureFlow DB not found` | Export `SECUREFLOW_DB` in your shell profile so git hooks see it |
 | Agent not calling `check_package` | Confirm `.windsurfrules` is at the project root and referenced from `CLAUDE.md` |
-| `codeguard-setup.sh` fails with "uv: command not found" | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Tests fail locally with "Could not locate the bindings file" | `npm rebuild better-sqlite3` (native module rebuild for your Node version) |
 
 ---

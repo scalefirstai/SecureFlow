@@ -27,17 +27,17 @@ file with MCP-enforced dependency guardrails on top.
 
 | File | Purpose |
 |---|---|
-| `codeguard-setup.sh` | Clones project-codeguard, generates Windsurf rules, copies them into a target project alongside SecureFlow's extension file. |
+| `codeguard-setup.sh` | Copies vendored CodeGuard rules + SecureFlow extension into a target project. No network required. |
+| `codeguard-rules/` | **Vendored** CodeGuard Windsurf rules, pinned via `codeguard-rules/VERSION`. See `codeguard-rules/README.md` for refresh instructions. |
 | `.windsurfrules` | SecureFlow MCP extension rules. **Additive** to CodeGuard — only the dependency-management guardrails CodeGuard cannot enforce on its own. |
 | `README.md` | This file. |
 
 ## Install into a target project
 
 ```bash
-# From a SecureFlow checkout
+# From a SecureFlow checkout — no args beyond the target dir
 ./packages/secureflow-mcp/guardrails/codeguard-setup.sh \
-  /path/to/your/spring-boot-service \
-  v1.3.0
+  /path/to/your/spring-boot-service
 ```
 
 After install, your target project will contain:
@@ -70,12 +70,20 @@ guardrails on top.
 
 ## Keeping CodeGuard rules current
 
-Pin to a release tag and refresh quarterly:
+Vendored rules are refreshed in **this** repo, then re-installed into
+target projects. See `codeguard-rules/README.md` for the full refresh
+procedure. TL;DR:
 
 ```bash
-./codeguard-setup.sh /path/to/your/service v1.4.0
+# In the SecureFlow repo — refresh the vendored snapshot
+# (requires git + uv on the refresh machine only)
+$EDITOR packages/secureflow-mcp/guardrails/codeguard-rules/README.md  # follow steps
+
+# In each target project — re-run the installer to pick up the new rules
+/path/to/secureflow/packages/secureflow-mcp/guardrails/codeguard-setup.sh \
+  /path/to/your/service
 git -C /path/to/your/service add .windsurf/
-git -C /path/to/your/service commit -m 'chore: update CodeGuard rules to v1.4.0'
+git -C /path/to/your/service commit -m 'chore: refresh CodeGuard rules'
 ```
 
 Your `.windsurfrules` extension file is independent and is **not**
